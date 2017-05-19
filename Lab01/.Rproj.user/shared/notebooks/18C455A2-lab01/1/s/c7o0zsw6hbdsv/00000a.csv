@@ -1,0 +1,7 @@
+"0","library(ggplot2)"
+"0","dat_plot <- data.frame("
+"0","  tv_show = factor(c(""13 Reasons Why"", ""HtGAwM"",""Sherlock""), levels=c(""13 Reasons Why"", ""HtGAwM"",""Sherlock"")),"
+"0","  show_median = c(median_reasons_why, median_HtGAwM,median_sherlock)"
+"0",")"
+"0","ggplot(data=dat_plot, aes(x=tv_show, y=show_median, fill=tv_show)) +"
+"0","    geom_bar(stat=""identity"")"

@@ -13,7 +13,7 @@ data_all_shows <- read.csv(file="./series_from_imdb.csv", header=TRUE, sep=",")
 
 ```
 
-# 1. Escolha um subconjunto de séries (eu sugiro entre 3 e 6) para usar nesse problema 
+# 1. Escolha um subconjunto de séries para usar nesse problema 
 
 Dentro do conjunto de dados, são seleciaonadas 3 séries.
 ```{r}
@@ -27,7 +27,7 @@ data_sub <- subset(data_all_shows, series_name %in% c("13 Reasons Why", "How to 
 
 Para vermos a diferença de avaliação de cada série podemos calcular a mediana das avaliações em cada episodio da série e comparar las.
 
-Para a primeria **13 Reasons Why** temos que a mediana é:
+Para **13 Reasons Why** temos que a mediana é:
 
 ```{r}
 
@@ -36,7 +36,7 @@ median_reasons_why
 
 ```
 
-Para a primeria **How to Get Away with Murder** temos que a mediana é:
+Para **How to Get Away with Murder** temos que a mediana é:
 
 ```{r}
 
@@ -45,7 +45,7 @@ median_HtGAwM
 
 ```
 
-Para a primeria **Sherlock** temos que a mediana é:
+Para **Sherlock** temos que a mediana é:
 
 ```{r}
 
@@ -54,7 +54,16 @@ median_sherlock
 
 ```
 
-Comparando as 3 medianas, temos que **Sherlock** é a série melhor avaliada com uma pequena diferença de *0.5* para série que tem a pior avaliação dentre as séries selecionadas. 
+Comparando as 3 medianas, temos que **Sherlock** é a série melhor avaliada com uma pequena diferença de *0.5* para série que tem a pior avaliação dentre as séries selecionadas.
+```{r echo=FALSE}
+library(ggplot2)
+dat_plot <- data.frame(
+  tv_show = factor(c("13 Reasons Why", "HtGAwM","Sherlock"), levels=c("13 Reasons Why", "HtGAwM","Sherlock")),
+  show_median = c(median_reasons_why, median_HtGAwM,median_sherlock)
+)
+ggplot(data=dat_plot, aes(x=tv_show, y=show_median, fill=tv_show)) +
+    geom_bar(stat="identity")
+```
 
 
 
