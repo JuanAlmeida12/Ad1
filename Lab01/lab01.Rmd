@@ -65,12 +65,28 @@ ggplot(data=dat_plot, aes(x=tv_show, y=show_median, fill=tv_show)) +
     geom_bar(stat="identity")
 ```
 
+## b. Qual das séries que você escolheu tem episódios de qualidade mais irregular segundo o IMDB? A diferença é grande? Pequena?
+
+Para ter uma melhor análise podemos observar como as avaliações são distribuidas em um gráfico BoxPlot.
+
+```{r echo=FALSE}
+ggplot(data_sub, aes(data_sub$series_name, data_sub$UserRating)) +
+  geom_point(shape=1) +
+  geom_boxplot()
+```
 
 
+A partir desse gráfico podemos ver que a mediana do boxplot de **Sherlok** está acima das outras mas o bloxplot dele é o que apresenta maior espalhamento dos dados,já o de **How to Get Away with Murder** parece ser mais preciso e com notas mais constantes e proximas umas das outras, ou seja, **Sherlok** é o que possui notas mais irregulares dos 3 casos.
+Para afirmar que **Sherlok** é a série que mais possui episodios irregulares com mais certeza, podemos utilizar o desvio padrão, que é o quão disperso os dados estão em torno da média, de cada uma das séries e comparalos.
+```{r}
+sd(subset(data_sub, series_name == "Sherlock")$UserRating)
 
+sd(subset(data_sub, series_name == "13 Reasons Why")$UserRating)
 
+sd(subset(data_sub, series_name == "How to Get Away with Murder")$UserRating)
+```
 
-
+Podemos ver que **Sherlok** possui a maior dipersão dentre as 3 séries selecionadas.
 
 
 
