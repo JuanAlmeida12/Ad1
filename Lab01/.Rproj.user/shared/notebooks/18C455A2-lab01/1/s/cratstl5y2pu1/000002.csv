@@ -1,6 +1,0 @@
-"0","median_reasons_why <- median(subset(data_sub, series_name == ""13 Reasons Why"")$UserRating)"
-"0","median_reasons_why"
-"1","[1]"
-"1"," 8.5"
-"1","
-"
