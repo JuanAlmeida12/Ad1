@@ -1,10 +1,17 @@
 ---
 title: "Lab01 AD1"
 output:
-  html_document: default
   html_notebook: default
+  html_document: default
 ---
+```{r echo=FALSE}
+library("dplyr")
+```
+#Checkpoint 1
+
 #Importando os dados
+
+Os dados foram coletados pelo imdb, contendo nomes de séries rating entre outros.
 
 No codigo abaixo o csv contendo os dados das séries é importado.
 ```{r}
@@ -18,7 +25,7 @@ data_all_shows <- read.csv(file="./series_from_imdb.csv", header=TRUE, sep=",")
 Dentro do conjunto de dados, são seleciaonadas 3 séries.
 ```{r}
 
-data_sub <- subset(data_all_shows, series_name %in% c("13 Reasons Why", "How to Get Away with Murder","Sherlock"))
+data_sub <- filter(data_all_shows, series_name %in% c("13 Reasons Why", "How to Get Away with Murder","Sherlock"))
 
 ```
 
@@ -31,7 +38,7 @@ Para **13 Reasons Why** temos que a mediana é:
 
 ```{r}
 
-median_reasons_why <- median(subset(data_sub, series_name == "13 Reasons Why")$UserRating)
+median_reasons_why <- median(filter(data_sub, series_name == "13 Reasons Why")$UserRating)
 median_reasons_why
 
 ```
@@ -40,7 +47,7 @@ Para **How to Get Away with Murder** temos que a mediana é:
 
 ```{r}
 
-median_HtGAwM <- median(subset(data_sub, series_name == "How to Get Away with Murder")$UserRating)
+median_HtGAwM <- median(filter(data_sub, series_name == "How to Get Away with Murder")$UserRating)
 median_HtGAwM
 
 ```
@@ -49,7 +56,7 @@ Para **Sherlock** temos que a mediana é:
 
 ```{r}
 
-median_sherlock <- median(subset(data_sub, series_name == "Sherlock")$UserRating)
+median_sherlock <- median(filter(data_sub, series_name == "Sherlock")$UserRating)
 median_sherlock
 
 ```
@@ -79,29 +86,109 @@ ggplot(data_sub, aes(data_sub$series_name, data_sub$UserRating)) +
 A partir desse gráfico podemos ver que a mediana do boxplot de **Sherlok** está acima das outras mas o bloxplot dele é o que apresenta maior espalhamento dos dados,já o de **How to Get Away with Murder** parece ser mais preciso e com notas mais constantes e proximas umas das outras, ou seja, **Sherlok** é o que possui notas mais irregulares dos 3 casos.
 Para afirmar que **Sherlok** é a série que mais possui episodios irregulares com mais certeza, podemos utilizar o desvio padrão, que é o quão disperso os dados estão em torno da média, de cada uma das séries e comparalos.
 ```{r}
-sd(subset(data_sub, series_name == "Sherlock")$UserRating)
+sd(filter(data_sub, series_name == "Sherlock")$UserRating)
 
-sd(subset(data_sub, series_name == "13 Reasons Why")$UserRating)
+sd(filter(data_sub, series_name == "13 Reasons Why")$UserRating)
 
-sd(subset(data_sub, series_name == "How to Get Away with Murder")$UserRating)
+sd(filter(data_sub, series_name == "How to Get Away with Murder")$UserRating)
 ```
 
 Podemos ver que **Sherlok** possui a maior dipersão dentre as 3 séries selecionadas.
 
+#Checkpoint 4
+
+#As series que tiveram uma queda de desempenho após uma temporada com alto rating?
+
+A primeira pergunta a se fazer é: *quando uma temporada é considerada com alto rating?* Utilizaremos a mediana da temporada e verificaremos se ela é alta, vamos definir que abaixo de 8.7 seja de baixo rating.
+
+Então vamos agrupar as séries por temporada fazendo a mediana de cada temporada.
+```{r}
+tv_shows_resume <- group_by(data_all_shows,series_name,season) %>%
+  summarize(eps = n(), median = median(UserRating, na.rm = T))
+
+tv_shows_resume
+```
+
+Agora vamos ver a variação de uma temporada para outra para cada série.
+```{r}
+tv_shows_resume <- group_by(data_all_shows,series_name,season) %>%
+  summarize(eps = n(), median = median(UserRating, na.rm = T)) %>%
+  mutate(variation=(median - lag(median)), last_season = lag(median))
+
+tv_shows_resume
+```
+
+Assim podemos, por fim filtrar, os dados para terem apenas as series que tinham alto rating depois cairam.
+
+```{r}
+tv_shows_resume <- group_by(data_all_shows,series_name,season) %>%
+  summarize(eps = n(), median = median(UserRating, na.rm = T)) %>%
+  mutate(variation=(median - lag(median)), last_season = lag(median)) %>%
+  filter(variation < 0, last_season >= 8.7, median < 8.7)
+
+tv_shows_resume
+```
+
+Essas são as séries e as temporadas em que houve uma baixa na qualidade e o rating diminuiu.
+<br>
+Isso levanta outra pergunta:*Qual série teve a maior queda no rating?*
+<br>
+```{r}
+min(tv_shows_resume$variation)
+
+```
+A maior queda foi de -0.9 que foi na 8 temporada de **Dexter**
+```{r echo=FALSE}
+ggplot(tv_shows_resume, aes(tv_shows_resume$series_name, tv_shows_resume$variation)) +
+  geom_bar(stat="identity")
+```
 
 
+#Series com poucos episódios são melhores avaliadas que as com maior numero de episódios?
 
+Para isso temos que dividir as séries em dois grupos,o com muitos episodios e o com poucos episodios. Vamos definir que uma série que tenho mais de 25 episodios se encaixa no grupo com muitos episodios.
+```{r}
+big_shows <- group_by(data_all_shows,series_name) %>%
+  summarize(eps = n(), median = median(UserRating, na.rm = T)) %>%
+  filter(eps > 25)
+big_shows
 
+small_shows <- group_by(data_all_shows,series_name) %>%
+  summarize(eps = n(), median = median(UserRating, na.rm = T)) %>%
+  filter(eps <= 25)
+small_shows
+```
 
+Podemos comparar as medianas dos dois grupos para vermos qual se dará melhor.
+```{r}
+median(big_shows$median)
+median(small_shows$median)
+```
+Então sim, séries com menos de 25 episódios são melhores avaliadas que as que possuem mais.
+<br>
+Gerando outra pergunta:**Mas qual a variancia desses dados e qual está mais espalhado?**
+<br>
+Podemos tentar ver isso através de um gráfico boxplot
+```{r echo=FALSE}
+big_shows <- big_shows %>% mutate(type = "big")
 
+small_shows <- small_shows %>% mutate(type = "small")
 
+data2 <- full_join(big_shows,small_shows)
 
+ggplot(data2, aes(data2$type, data2$median)) +
+  geom_point(shape=1) +
+  geom_boxplot()
+```
+Aparentemente amabas as categorias tem o mesmo espalhamento.Podemos ver isso numericamente também.
 
+```{r}
+sd(big_shows$median)
 
+sd(small_shows$median)
+```
 
+Numericamente as séries maiores possuem maior espalhamento, o que esperado já que são mais temporadas e mais episódios.
 
-
-
-
-
+Então podemos concluir que séries com menor numero de episódios levam vantagem contra as grandes séries, também vimos quais séries tiveram quedas após uma boa temporada. 
 
