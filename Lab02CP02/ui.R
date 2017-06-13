@@ -6,30 +6,26 @@
 #
 
 library(shiny)
-library(tidyverse, warn.conflicts = F)
+
 library(plotly)
-
-
-data_shows <- read_csv(file = "../series_from_imdb.csv")
 
 shinyUI(fluidPage(
 
   # Application title
-  titlePanel("Old Faithful Geyser Data"),
-
+  titlePanel("Lab02CP02"),
+  h2("Comparando séries por episodio ou por temporada"),
+  div("Você pode selecionar suas séries favoritas e comparalas por episódios ou por temporada."),
   # Sidebar with a slider input for number of bins
   sidebarLayout(
     sidebarPanel(
-      sliderInput("bins",
-                  "Number of bins:",
-                  min = 1,
-                  max = 50,
-                  value = 30)
+      selectInput("filtros", "Séries", data$series_name, selected = "Sherlock", selectize = TRUE, multiple = TRUE),
+      selectInput("type", "Séries", c("Eps","Temporadas"), selected = "Eps", selectize = TRUE, multiple = FALSE)
     ),
-
     # Show a plot of the generated distribution
-    mainPanel(
-      plotOutput("distPlot")
+    mainPanel(tabsetPanel(type="tab", 
+                          
+                          tabPanel("Plot", plotlyOutput("distPlot"))
     )
   )
 ))
+)
