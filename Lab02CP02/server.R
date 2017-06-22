@@ -10,17 +10,23 @@ library(shiny)
 library(tidyverse, warn.conflicts = F)
 library(plotly)
 
-data <- read.csv(file="./series_from_imdb.csv", header=TRUE, sep=",")
-tv_shows_resume <- group_by(data,series_name,season) %>%
-  summarize(eps = n(), median = median(UserRating, na.rm = T))
 
 shinyServer(function(input, output) {
-
-  output$distPlot <- renderPlotly({
+  
+  data_shows <- read.csv(file="./series_from_imdb.csv", header=TRUE, sep=",")
+  
+  output$painelPlot <- renderUI({
+    selectInput("filtros", "Séries", data_shows$series_name, selected = "Sherlock", selectize = TRUE, multiple = TRUE)
+    selectInput("type", "Séries", c("Eps","Temporadas"), selected = "Eps", selectize = TRUE, multiple = FALSE)
     
+  })
+  
+  output$distPlot <- renderPlotly({
+    tv_shows_resume <- group_by(data_shows,series_name,season) %>%
+      summarize(eps = n(), median = median(UserRating, na.rm = T))  
     if(input$type == "Eps") {
       
-      g <- data %>% 
+      g <- data_shows %>% 
         filter(series_name %in% input$filtros) %>% 
         ggplot(aes(series_ep, UserRating)) +
         geom_point(aes(colour = series_name)) +

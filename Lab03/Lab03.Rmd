@@ -1,0 +1,123 @@
+---
+title: "Lab03"
+output: html_notebook
+---
+
+```{r echo=FALSE}
+library(tidyverse, warn.conflicts = F)
+library(rvest)
+library(plotly)
+library(cluster)
+library(ggdendro)
+theme_set(theme_light())
+source("plota_solucoes_hclust.R")
+```
+
+# Checkpoint 1
+
+Coletando os dados no site do Rottent Tomatoes do ator Tom Hanks.
+
+```{r}
+from_page <- read_html("https://www.rottentomatoes.com/celebrity/tom_hanks/") %>% 
+    html_node("#filmographyTbl") %>% # A sintaxe da expressão é de um seletor à lá JQuery: https://rdrr.io/cran/rvest/man/html_nodes.html 
+    html_table(fill=TRUE) %>% # Faz parse
+    as.tibble()
+
+filmes = from_page %>% 
+    filter(RATING != "No Score Yet", 
+           `BOX OFFICE` != "—", 
+           CREDIT != "Executive Producer") %>%
+    mutate(RATING = as.numeric(gsub("%", "", RATING)), 
+           `BOX OFFICE` = as.numeric(gsub("[$|M]", "", `BOX OFFICE`))) %>% 
+    filter(`BOX OFFICE` >= 1) # Tem dois filmes que não parecem ter sido lançados no mundo todo
+
+```
+
+Agora vamos agrupar os filmes em grupos usando o Rating e o Box Office como dimensões. Com as distancias euclidianas.
+
+```{r}
+agrupamento_h_2d = filmes %>% 
+    column_to_rownames("TITLE") %>%
+    select(RATING, `BOX OFFICE`) %>%
+    dist(method = "euclidean") %>% 
+    hclust(method = "centroid")
+
+ggdendrogram(agrupamento_h_2d, rotate = TRUE)
+```
+
+Acima podemos ver o algoritimo criando os grupos, até criar um unico grupo.
+Agora temos que decidir quantos grupos serão formados pra isso vamos olhar o proximo gráfico.
+
+```{r}
+data.frame(k = NROW(agrupamento_h_2d$height):1, 
+           height = agrupamento_h_2d$height) %>% 
+    ggplot(aes(x = k, y = height)) + 
+    geom_line(colour = "grey") + 
+    geom_point() + 
+    labs(x = "Número de clusters produzido", y = "Dissimilaridade na junção")
+
+```
+
+Olhando para o gráfico podemos ver que um bom numero de grupos seria 5, porque é um numero de grupos que tem boa dissimilaridade. O gráfico abaixo mostra como fica a divisão de grupos.
+
+```{r}
+plota_hclusts_2d(agrupamento_h_2d, 
+                 filmes, 
+                 c("RATING", "`BOX OFFICE`"), 
+                 linkage_method = "centroid", ks = 1:6)
+```
+
+Podemos melhorar essa visualização atribuindo uma escala de log.
+
+```{r}
+agrupamento_h_2d = filmes %>% 
+    column_to_rownames("TITLE") %>%
+    mutate(`BOX OFFICE` = log10(`BOX OFFICE`)) %>% 
+    select(RATING, `BOX OFFICE`) %>%
+    mutate_all(funs(scale)) %>% 
+    dist(method = "euclidean") %>% 
+    hclust(method = "centroid")
+
+ggdendrogram(agrupamento_h_2d, rotate = TRUE)
+```
+
+Dando uma nova olhada no gráfico que nos ajuda a escolher um número grupos temos uma pequena mudança
+
+```{r}
+data.frame(k = NROW(agrupamento_h_2d$height):1, 
+           height = agrupamento_h_2d$height) %>% 
+    ggplot(aes(x = k, y = height)) + 
+    geom_line(colour = "grey") + 
+    geom_point() + 
+    labs(x = "Número de clusters produzido", y = "Dissimilaridade na junção")
+
+```
+Agora com a escala de *log* o o melhor numero de grupos é 3 olhando para silhueta podemos ver que realmente é o melhor grupo 
+
+```{r}
+distancias = filmes %>% 
+    select(RATING) %>%
+    dist(method = "euclidean")
+
+agrupamento_hs = filmes %>% 
+    column_to_rownames("TITLE") %>%
+    mutate(`BOX OFFICE` = log10(`BOX OFFICE`)) %>% 
+    select(RATING, `BOX OFFICE`) %>%
+    mutate_all(funs(scale)) %>% 
+    dist(method = "euclidean") %>% 
+    hclust(method = "complete")
+
+plot(silhouette(cutree(agrupamento_hs, k = 2), distancias))
+plot(silhouette(cutree(agrupamento_hs, k = 3), distancias))
+plot(silhouette(cutree(agrupamento_hs, k = 4), distancias))
+
+```
+
+Então podemos agrupar os filmes de Tom Hanks em 3 grupos: Os grandes sucessos, os comuns e fracassos.
+
+```{r}
+plota_hclusts_2d(agrupamento_h_2d, 
+                 filmes, 
+                 c("RATING", "`BOX OFFICE`"), 
+                 linkage_method = "centroid", ks = 3)
+```

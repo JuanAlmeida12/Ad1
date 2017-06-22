@@ -1,0 +1,100 @@
+---
+title: "Problema3CP1"
+author: "Ênio Abrantes"
+date: "19 de junho de 2017"
+output: html_document
+---
+
+Sempre tive a curiosidade de saber mais sobre o conteúdo gerado pelo ator LEONARDO DICAPRIO e para isso decidi realizar um agrupamento com duas dimensões, levando em consideração a bilheteria e as avaliações.
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse, warn.conflicts = F)
+library(rvest)
+library(plotly)
+library(cluster)
+library(ggdendro)
+library(highcharter)
+theme_set(theme_light())
+source("plota_solucoes_hclust.R")
+```
+
+
+Para começar a análise é preciso coletar os dados, para isso foi preciso ler um html e salvar na variável from_page.
+```{r}
+from_page <- read_html("https://www.rottentomatoes.com/celebrity/leonardo_di_caprio") %>% 
+    html_node("#filmographyTbl") %>% # A sintaxe da expressão é de um seletor à lá JQuery: https://rdrr.io/cran/rvest/man/html_nodes.html 
+    html_table(fill=TRUE) %>% 
+    as.tibble()
+
+```
+
+Alguns dos dados acabam não sendo relevantes, seja pelo fato de não ter havido avaliações , de não ter havido bilheteria ou pelo fato de ter sido uma produção executiva. Para nossa análise foi preciso filtrar somente os que são relevantes.
+
+```{r}
+filmes = from_page %>% 
+    filter(RATING != "No Score Yet", 
+           `BOX OFFICE` != "—", 
+           CREDIT != "Executive Producer") %>%
+    mutate(RATING = as.numeric(gsub("%", "", RATING)), 
+           `BOX OFFICE` = as.numeric(gsub("[$|M]", "", `BOX OFFICE`))) %>% 
+    filter(`BOX OFFICE` >= 1) 
+
+
+```
+
+Agora que já coletamos os dados é preciso saber quantos grupos serão precisos para que se tinha um bom agrupamento. No gráfico abaixo é possível ver uma espécie de 'joelho' no cluster de número 2, isso acontece pois a partir do cluster 2 o gráfico começa a seguir uma tendência, diferente do que acontece no cluster anterior ao 2.
+```{r}
+
+agrupamento_h_2d = filmes %>% 
+    column_to_rownames("TITLE") %>%
+    select(RATING, `BOX OFFICE`) %>%
+    dist(method = "euclidean") %>% 
+    hclust(method = "centroid")
+
+data.frame(k = NROW(agrupamento_h_2d$height):1, 
+           height = agrupamento_h_2d$height) %>% 
+    ggplot(aes(x = k, y = height)) + 
+    geom_line(colour = "grey") + 
+    geom_point() + 
+    labs(x = "Número de clusters produzido", y = "Dissimilaridade na junção")
+
+
+```
+
+
+
+O gráfico de Silhouetas é capaz de indicar o quão bem dividido os clusters estão, quanto mais próximo de 1 melhor, sabendo disso resolvi calcular para divisões entre 2 e 6 clusters(levando em consideração a bilheteria e as avaliações, representado nos gráficos abaixo), como esperado a divisão em 2 clusters é a melhor, tendo como média o valor de 0.48.
+```{r}
+
+distancias = filmes %>% 
+    column_to_rownames("TITLE") %>%
+    select(RATING, `BOX OFFICE`) %>% 
+    mutate(`BOX OFFICE` = log10(`BOX OFFICE`)) %>% 
+    mutate_all(funs(scale)) %>% 
+    dist(method = "euclidean")
+
+plot(silhouette(cutree(agrupamento_h_2d, k = 2), distancias))
+plot(silhouette(cutree(agrupamento_h_2d, k = 3), distancias))
+plot(silhouette(cutree(agrupamento_h_2d, k = 4), distancias))
+plot(silhouette(cutree(agrupamento_h_2d, k = 5), distancias))
+plot(silhouette(cutree(agrupamento_h_2d, k = 6), distancias))
+```
+
+Realizando a divisão em 2 grupos é possível ver no gráfico abaixo que um grupo se destaca pelo fato de conter apenas 4 filmes, são eles Runner Runner, Red Riding Hood, Live By Night e Out of the Furnace, onde o grupo se destaca por possuir uma baixa bilheteria e avaliações ruins, devivo a esses fatores eu creio que um bom nome para esse grupo seria 'filmes fracassados', quanto ao grupo é possível ver filmes como Catch Me If You Can, Django Unchained, Inception e The Aviator, que se caracterizam pelo de terem sido grandes sucessos, com boas avaliações e grande bilheteria, porém como o grupo possui muitos filmes, alguns não se destacam tanto assim, como por exemplo J. Edgar, que acabou ficando com média negativa no gráfico de Silhoueta, indicando que que caracteriza mais com o grupo dos 'filmes fracassados' por não ter grande bilheteria e boa avaliação se comparado com os outros membros do grupo, por isso não chamaria esse grupo de 'Filmes bem-sucedidos', creio que o melhor nome para ele seria 'Filmes relevantes'.
+```{r}
+agrupamento_h_2d = filmes %>% 
+    column_to_rownames("TITLE") %>%
+    select(RATING, `BOX OFFICE`) %>% 
+    mutate(`BOX OFFICE` = log10(`BOX OFFICE`)) %>% 
+    mutate_all(funs(scale)) %>% 
+    dist(method = "euclidean") %>% 
+    hclust(method = "centroid")
+
+filmes2 = filmes %>% mutate(`BOX OFFICE` = log10(`BOX OFFICE`))
+plota_hclusts_2d(agrupamento_h_2d, 
+                 filmes2, 
+                 c("RATING", "`BOX OFFICE`"), 
+                 linkage_method = "ward.D", ks = 2) + scale_y_log10()
+
+
+```
