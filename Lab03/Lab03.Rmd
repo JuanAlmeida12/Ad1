@@ -9,6 +9,7 @@ library(rvest)
 library(plotly)
 library(cluster)
 library(ggdendro)
+library(lubridate)
 theme_set(theme_light())
 source("plota_solucoes_hclust.R")
 ```
@@ -121,3 +122,68 @@ plota_hclusts_2d(agrupamento_h_2d,
                  c("RATING", "`BOX OFFICE`"), 
                  linkage_method = "centroid", ks = 3)
 ```
+
+# Checkpoint 2
+
+Para come;ar vamos abrir os arquivos *csv* com os dados
+
+```{r}
+ufcg_ua <- read.csv('ufcg-201704-unidades-academicas-filtradas.csv')
+
+ufcg_tudo <- read.csv('ufcg-201704-tudo.csv')
+
+```
+
+Primreiramente faremos um join dos dados e faremos uma modificação nos dados.
+
+```{r}
+ufcg_tudo <- ufcg_tudo %>% 
+  mutate(tempo_org = (2017 - year(strptime(DATA_INGRESSO_ORGAO, format =  "%d/%m/%Y"))))
+
+```
+
+Pronto, agora vamos procurar perfis nos grupos utilizando as dimenções tempo no orgão em que trabalha (tempo_org), em qual orgão trabalha (COD_ORG_EXERCICIO), tipo de vinculo (TIPO_VINCULO.x), e nivel do cargo (NIVEL_CARGO). Agora vamos ver quantos grupos é o ideal.
+
+```{r}
+agrupamento_h_4d = ufcg_tudo %>% 
+    select(tempo_org, COD_ORG_EXERCICIO,TIPO_VINCULO,NIVEL_CARGO) %>%
+    mutate_all(funs(scale)) %>% 
+    dist(method = "euclidean")
+
+agrupamento_h_md = agrupamento_h_4d %>% 
+    hclust(method = "ward.D")
+
+data.frame(k = NROW(agrupamento_h_md$height):1, 
+           height = agrupamento_h_md$height) %>% 
+    ggplot(aes(x = k, y = height)) + 
+    geom_line(colour = "grey") + 
+    geom_point() + 
+    labs(x = "Número de clusters produzido", y = "Dissimilaridade na junção")
+
+```
+
+O Ideal será algo próximo a zero então temos
+
+```{r}
+
+ggdendrogram(agrupamento_h_md, rotate = T)
+cores = RColorBrewer::brewer.pal(2, "Set2")
+plot(cluster::silhouette(cutree(agrupamento_h_md, k = 2), agrupamento_h_4d), col = cores, border = NA)
+
+ggdendrogram(agrupamento_h_md, rotate = T)
+cores = RColorBrewer::brewer.pal(3, "Set3")
+plot(cluster::silhouette(cutree(agrupamento_h_md, k = 3), agrupamento_h_4d), col = cores, border = NA)
+
+ggdendrogram(agrupamento_h_md, rotate = T)
+plot(cluster::silhouette(cutree(agrupamento_h_md, k = 4), agrupamento_h_4d),border = NA)
+
+```
+
+O que se apresenta melhor são 4 grupos. 
+
+
+
+
+
+
+

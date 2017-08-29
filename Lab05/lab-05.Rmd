@@ -1,0 +1,84 @@
+---
+title: "Lab05"
+output: html_notebook
+---
+
+```{r echo=FALSE}
+library(tidyverse)
+library(broom)
+library(modelr)
+theme_set(theme_bw())
+```
+
+#Checkpoint 1
+Para esta análise serão utilizados dados de "speed dating". Os dados foram obtidos dos participantes desses encontros. Cada participante responde um questionario após cada encontro descrevendo suas impressões sobre seu parceiro. As perguntas variam de características físicas, como nível de atração, para características psicológicas, como sinceridade.
+
+```{r warning=FALSE}
+dates <- read_csv("speed-dating.csv")
+dates <- na.omit(dates)
+dates$attr3_s = as.numeric(as.character(dates$attr3_s))
+```
+
+## O quanto o participante achou seu parceiro inteligente e divertido tem influencia se o participante gostou de seu parceiro?
+
+Os participantes dizem o quanto gostaram do seu parceiro, com base nessas respostas queremos saber se o seu parceiro ser inteligente e divertido influenciam em gostar.
+<br>
+Sabendo disso vamos criar um modelo em que gostar esta em função de ser inteligente e divertido.
+
+```{r}
+set.seed(1)
+mod_fun_intel <- lm(like ~ intel  + fun, data = dates)
+tidy(mod_fun_intel, conf.int = TRUE)
+```
+
+Podemos ver que ser divertido e ser inteligente tem alguma significância no resultado de gostar, além de notarmos que a função cresce, ou seja, tem uma significância positiva.
+Para vermos quão significânte é essas variaveis em gostar temos que calcular o *R²*, que é um coeficiente que nos mostra qual a percentagem que o modelo representa o atributo gostar.
+
+```{r}
+glance(mod_fun_intel)
+```
+
+Podemos ver que o *R²* é *0.486929*, ou seja, esse modelo representa o atributo gostar em *48.69%*
+
+```{r}
+mod_fun_intel = dates %>% 
+  data_grid(intel = seq_range(fun, 10), 
+            fun = seq_range(fun, 5)) %>% 
+  add_predictions(mod_fun_intel)
+
+mod_fun_intel %>% 
+  ggplot(aes(x = intel, y = pred)) + 
+  geom_line() + 
+  facet_grid(. ~ fun) +
+  labs(title="Como ser divertido e inteligente influenciam no gostar", x="Inteligente", y="Predição do gostar")
+
+```
+
+
+##Gostar de museus e arte tem influencia em quão os participantes se acham inteligentes.
+
+
+Ter gostos artisticos muitas vezes faz a pessoa pensar que é mais inteligente, com base nisso podemos verificar nos dados se essa premissa é verdadeira e ter gostos para art e historia faz o participante achar que é inteligente. Primeiro é necessario criar o modelo. 
+
+```{r}
+set.seed(1)
+mod_art_museum <- lm(like ~ art  + museums, data = dates)
+tidy(mod_art_museum, conf.int = TRUE)
+```
+
+Como podemos ver o intervalo de confiança das duas variáveis inclui zero então não podemos dizer que elas são significântes.
+
+
+```{r}
+glance(mod_art_museum)
+```
+
+Comprovando que a significância do modelo é baixa podemos ver que o *R²* é *0.0004*, ou seja, quase não representa em nada a variável.
+
+
+
+
+
+
+
+

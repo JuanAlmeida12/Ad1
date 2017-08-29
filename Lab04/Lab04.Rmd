@@ -1,0 +1,324 @@
+---   
+title: "Lab04"
+output: html_notebook
+---
+```{r echo=FALSE}
+library(tidyverse)
+library(lubridate)
+library(resample)
+```
+#Checkpoint 1
+Para essa análise será usada uma amostra de dados de atividade de commits de usuários do github. 
+
+
+```{r}
+
+data <- read_csv("github-users-committing-filetypes.csv")
+
+```
+### Escolhendo duas linguagens distintas
+
+Para essa análise serão escolhidas duas liguagens, onde serão comparadas as frequência de commits durante o meio da semana e o final de semana. As linguagens selecionadas serão Python, representada pela extensão *py*, e C++, representada pela extensão *cpp*.
+
+
+```{r}
+
+py_cpp_data <- data %>% filter(file_extension %in% c("py", "cpp"))
+
+```
+## Para cada uma delas, há uma diferença significativa na sua popularidade durante a semana e durante o fim de semana? Essa diferença é grande?
+
+Vamos agora alterar os dados para sabermos se o dia do commit caiu no meio da semana ou no final da semana.
+
+```{r}
+
+py_cpp_data <- py_cpp_data %>% 
+        mutate(type=ifelse(wday(as.Date(paste(the_year, the_month, month_day, sep="-")),
+                                label=TRUE) %in% c("Mon", "Tues", "Wed", "Thurs",
+                                                   "Fri"),
+                           "semana","fim_de_semana"))
+```
+
+Vendo graficamente os commits na linguagem Python
+
+```{r}
+py_cpp_data %>% filter(file_extension=="py") %>% 
+    ggplot(aes(x=as.Date(paste(the_year, the_month, month_day, sep="-")), y=users)) +
+    geom_point(aes(colour=type)) +
+    labs(title="Python", x="Dia", y="Usuários", colour="Tipo")
+```
+Podemos observar que o número de commits durante a semana é bem maior que durante o final de semana nessa amostra, mas é preciso sabe se essa amostra representa a população com um nível de confiança aceitável.
+```{r}
+set.seed(1)
+py <- py_cpp_data %>% filter(file_extension == "py")
+
+py_week <- py %>% filter(type=="semana")
+py_weekend <- py %>% filter(type=="fim_de_semana")
+
+reps = 5000
+
+mean_week_py = bootstrap(py_week, 
+                        mean(users), 
+                        R = reps) %>% 
+    CI.percentile(probs = c(.025, .975))
+mean_week_py 
+
+mean_weekend_py = bootstrap(py_weekend, mean(users), R = reps) %>% 
+    CI.percentile(probs = c(.025, .975))
+mean_weekend_py 
+```
+Com 95% de confiança podemos dizer que a média de commits durante a semana está entre 4589.7 e 4710.6, e durante o fim de semana está entre 2468.2 e 2579.6, ou seja, podemos dizer que Python é mais popular durante a semana.
+<br>
+Vendo graficamente os commits na linguagem C++
+```{r}
+py_cpp_data %>% filter(file_extension=="cpp") %>% 
+    ggplot(aes(x=as.Date(paste(the_year, the_month, month_day, sep="-")), y=users)) +
+    geom_point(aes(colour=type)) +
+    labs(title="C++", x="Dia", y="Ysuários", colour="Tipo")
+```
+Podemos observar que o número de commits durante a semana é ligeiramente maior que durante o final de semana nessa amostra, mas, como também no caso de Python, é preciso sabe se essa amostra representa a população com um nível de confiança aceitável.
+```{r}
+set.seed(1)
+cpp <- py_cpp_data %>% filter(file_extension == "cpp")
+
+cpp_week <- cpp %>% filter(type=="semana")
+cpp_weekend <- cpp %>% filter(type=="fim_de_semana")
+
+reps = 5000
+
+mean_week_cpp = bootstrap(cpp_week, 
+                        mean(users), 
+                        R = reps) %>% 
+    CI.percentile(probs = c(.025, .975))
+mean_week_cpp 
+
+mean_weekend_cpp = bootstrap(cpp_weekend, mean(users), R = reps) %>% 
+    CI.percentile(probs = c(.025, .975))
+mean_weekend_cpp 
+```
+Com 95% de confiança podemos dizer que a média de commits durante a semana está entre 1795.72 e 1847.572, e durante o fim de semana está entre 1228.3 e 1285.2, ou seja, podemos dizer que C++ é ligeiramente mais popular durante a semana.
+
+##Existe uma diferença significativa entre as duas linguagens na sua variação de popularidade nos finais de semana?
+
+É necessario fazer a diferença entre a semana e o final de semana.
+
+```{r}
+set.seed(1)
+bs = bootstrap2(data = py_week$users, 
+               data2 = py_weekend$users, 
+               mean)
+means_py = CI.percentile(bs, probs = c(.025, .975))
+means_py
+
+bs2 = bootstrap2(data = cpp_week$users, 
+               data2 = cpp_weekend$users, 
+               mean)
+means_cpp = CI.percentile(bs2, probs = c(.025, .975))
+means_cpp
+
+data.frame(rbind(means_py, means_cpp)) %>% 
+  ggplot(aes(x = c("Python", "C++"), ymin = X2.5., ymax = X97.5.)) + 
+  geom_errorbar(width = .2) +
+  labs(title="Semana - fim de semana", x="")
+```
+
+Vendo isso podemos ver que a diferença entre o final de semana e o meio da semna em C++ é bem menor que a de Python, então C++ é mais popular no final de semana. 
+
+#Checkpoint 3
+
+Continuando utilizando python e c++ como as linguagens selecionadas para responder as perguntas
+
+## Há uma diferença significativa na sua popularidade no mês de Janeiro e no mês de Dezembro?
+
+Para responder essa podemos fazer a média de cada mês
+#### Python
+
+Vamos separar os meses de Janeiro e Dezembro e depois calcular o intervalo da média com 95% de confiança
+```{r}
+set.seed(1)
+
+py_december <- py %>% filter(the_month==12)
+py_january <- py %>% filter(the_month==1)
+
+mean_december_py <- bootstrap(py_december, 
+                        mean(users), 
+                        R = reps) %>% 
+    CI.percentile(probs = c(.025, .975))
+mean_december_py
+
+mean_january_py <- bootstrap(py_january, 
+                        mean(users), 
+                        R = reps) %>% 
+    CI.percentile(probs = c(.025, .975))
+mean_january_py
+
+```
+
+Com 95% de confiança podemos dizer que a média de commits durante Dezembro está entre 3585.237 e 4639.065, e durante Janeiro está entre 3246.613 e 4503.242, ou seja, aparentemente Python é mais popular durante o mês de Janeiro
+<br>
+#### C++
+
+Vamos separar os meses de Janeiro e Dezembro e depois calcular o intervalo da média com 95% de confiança
+```{r}
+set.seed(1)
+
+cpp_december <- cpp %>% filter(the_month==12)
+cpp_january <- cpp %>% filter(the_month==1)
+
+mean_december_cpp <- bootstrap(cpp_december, 
+                        mean(users), 
+                        R = reps) %>% 
+    CI.percentile(probs = c(.025, .975))
+mean_december_cpp
+
+mean_january_cpp <- bootstrap(py_january, 
+                        mean(users), 
+                        R = reps) %>% 
+    CI.percentile(probs = c(.025, .975))
+mean_january_cpp
+
+```
+
+Com 95% de confiança podemos dizer que a média de commits durante Dezembro está entre 1384.644 e 1620.146, e durante Janeiro está entre 3751.715 e 4286.502, ou seja, aparentemente Python é mais popular durante o mês de Janeiro
+<br>
+
+## Existe uma diferença na popularidade de Java no começo do mês ou no final do mês?
+
+Vamos definir que começo de mês é do dia 1 ao 10 e fim de mês do dia 20 ao 31.
+Então separamos esses dias e calculamos o intervalo de suas médias.
+
+```{r}
+set.seed(1)
+
+java <- data %>% filter(file_extension == "java")
+
+java_b_month <- java %>% filter(month_day <= 10)
+java_e_month <- java %>% filter(month_day >= 20)
+
+mean_b_java <- bootstrap(java_b_month, 
+                        mean(users), 
+                        R = reps) %>% 
+    CI.percentile(probs = c(.025, .975))
+mean_b_java
+
+mean_e_month <- bootstrap(java_e_month, 
+                        mean(users), 
+                        R = reps) %>% 
+    CI.percentile(probs = c(.025, .975))
+mean_e_month
+
+```
+Com 95% de confiança podemos dizer que a média de commits durante o começo do mês está entre 2945.045 e 3191.634, e durante o fim do mês está entre 3006.553 e  3250, ou seja, aparentemente Java não tem diferença se está no começo ou no final do mês, a popularidade da linguagem é a semelhante.
+
+#Checkpoint 4
+
+Refazer as perguntas do checkpoint anterior utilizando p valor e teste de hipótese.
+
+## Há uma diferença significativa na sua popularidade no mês de Janeiro e no mês de Dezembro?
+
+O p-valor é a probabilidade de encontrar resultados iguais ou maiores que os do experimento quando a hipótese nula é verdadeira. 
+
+#### Python
+A média de usuários commitando em Janeiro e Dezembro pode ser vista abaixo.
+```{r}
+mean2_january_py <- mean(py_january$users)
+mean2_january_py
+```
+```{r}
+mean2_december_py <- mean(py_december$users)
+mean2_december_py
+```
+E a diferença entre as médias é de aproximadamente 367.75 usuários.
+```{r}
+
+diff_mean2_py <- mean2_january_py - mean2_december_py
+diff_mean2_py
+
+```
+
+Para estimar o p-valor se vai fazer uma reamostragem das quantidades de usuários embaralhando os meses aos quais as quantidades fazem referência.
+
+```{r}
+set.seed(1)
+diffs_py = replicate(10000, {
+  means = py %>% 
+    mutate(id_shuffled = sample(the_month)) %>% 
+    group_by(id_shuffled) %>% 
+    summarise(mean = mean(users))
+  py2_january <- means %>% filter(id_shuffled==1)
+  py2_december <- means %>% filter(id_shuffled==12)
+  return(py2_january$mean - py2_december$mean)
+})
+
+tibble(diff = diffs_py) %>% 
+  ggplot(aes(x = diff)) + 
+  geom_histogram(bins = 30) + 
+  geom_vline(xintercept = diff_mean2_py) +
+  labs(title="Distribuição das diferenças de usuários\n de Python entre Janeiro e Dezembro",
+       x="Diferença", y="")
+```
+Podemos observar que a linha está bem a frente do centro da distribuição indicando que provavelmente a hipótese nula não é verdadeira e que a diferença de usuário de Janeiro e Dezembro é significativa.
+
+```{r}
+sum(abs(diffs_py) >= abs(diff_mean2_py)) / length(diffs_py)
+```
+O p-valor encontrado é 0.1271, indicando que aproximadamente *12.7%* da reamostragem o valor da diferença é maior ou igual ao encontrado na amostra. Como se utiliza *0.05%* como comparação, o valor encontrado é maior então não há indicios de que a hipótese nula não é verdadeira.
+
+#### C++
+
+A média de usuários commitando em Janeiro e Dezembro pode ser vista abaixo.
+```{r}
+mean2_january_cpp <- mean(cpp_january$users)
+mean2_january_cpp
+```
+```{r}
+mean2_december_cpp <- mean(cpp_december$users)
+mean2_december_cpp
+```
+E a diferença entre as médias é de aproximadamente 193.56 usuários.
+```{r}
+
+diff_mean2_cpp <- mean2_january_cpp - mean2_december_cpp
+diff_mean2_cpp
+
+```
+
+Para estimar o p-valor se vai fazer uma reamostragem das quantidades de usuários embaralhando os meses aos quais as quantidades fazem referência.
+
+```{r}
+set.seed(1)
+diffs_cpp = replicate(10000, {
+  means = cpp %>% 
+    mutate(id_shuffled = sample(the_month)) %>% 
+    group_by(id_shuffled) %>% 
+    summarise(mean = mean(users))
+  cpp2_january <- means %>% filter(id_shuffled==1)
+  cpp2_december <- means %>% filter(id_shuffled==12)
+  return(cpp2_january$mean - cpp2_december$mean)
+})
+
+tibble(diff = diffs_cpp) %>% 
+  ggplot(aes(x = diff)) + 
+  geom_histogram(bins = 30) + 
+  geom_vline(xintercept = diff_mean2_cpp) +
+  labs(title="Distribuição das diferenças de usuários\n de C++ entre Janeiro e Dezembro",
+       x="Diferença", y="")
+```
+Podemos observar que a linha está bem a frente do centro da distribuição indicando que provavelmente a hipótese nula não é verdadeira e que a diferença de usuário de Janeiro e Dezembro é significativa.
+
+```{r}
+sum(abs(diffs_cpp) >= abs(diff_mean2_cpp)) / length(diffs_cpp)
+```
+O p-valor encontrado é 0.1271, indicando que aproximadamente *0.01%* da reamostragem o valor da diferença é maior ou igual ao encontrado na amostra. Como se utiliza *0.05%* como comparação, o valor encontrado é muito menor então há forte indicios de que a hipótese nula não é verdadeira.
+
+## Diferença IC e Teste de Hipóteses
+
+Para essa amostra, no de Python o IC se saiu melhor já que no Teste de Hipóteses o resultado foi bem inconclusivo. Já para o caso de C++ o resultado foi bem semelhante ambos mostraram que haviam um diferença significativa.
+
+
+
+
+
+
+
+
